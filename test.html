@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UiBattleNumEffect Test</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>UiBattleNumEffect Test</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        'use strict';
+
+        // UiTextクラスの仮定義（縁取り文字描画用のダミー関数）
+        class UiText {
+            static drawFrame(context, text, x, y, charW, color, outlineWidth) {
+                context.font = `${charW}px Arial`;
+                context.strokeStyle = 'black';
+                context.lineWidth = outlineWidth;
+                context.strokeText(text, x, y);
+                context.fillStyle = color;
+                context.fillText(text, x, y);
+            }
+        }
+
+        // UiBattleNumEffectクラス
+        class UiBattleNumEffect {
+            static draw(gameData, options, time) {
+                if (!options.numEffectLast) { return; }
+
+                const diff = time.sum - options.numEffectLast;
+                const timeMax = 500;
+
+                if (diff > timeMax) {
+                    options.numEffectLast = undefined;
+                    return;
+                }
+
+                const rect = options.enemyRect;
+                const charW = 60;
+                const x = (rect.x + rect.w / 4) | 0;
+                const move = Math.sin(diff / timeMax * Math.PI);
+                const y = rect.y + rect.h - move * charW * 2;
+
+                const layerId = gameData.layerIds.front;
+                const context = gameData.canvasArr[layerId].context;
+                UiText.drawFrame(context, '' + options.numEffectNum, x, y, charW, 'Black', 1);
+            }
+        }
+
+        // テスト用のセットアップ
+        window.onload = function() {
+            const canvas = document.getElementById('gameCanvas');
+            const context = canvas.getContext('2d');
+
+            const gameData = {
+                canvasArr: [{ context: context }],
+                layerIds: { front: 0 }
+            };
+
+            const options = {
+                enemyRect: { x: 300, y: 200, w: 200, h: 100 },
+                numEffectNum: 12345,
+                numEffectLast: null // エフェクトの開始時間は後で設定
+            };
+
+            let time = { sum: 0 };
+
+            function update() {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                time.sum += 16; // フレームごとに約16ミリ秒進む (60fps)
+                
+                // エフェクトの描画
+                UiBattleNumEffect.draw(gameData, options, time);
+                
+                // エフェクトが終了していない限り、描画を続ける
+                if (options.numEffectLast !== undefined) {
+                    requestAnimationFrame(update);
+                }
+            }
+
+            // 数字エフェクトをクリックで開始する
+            canvas.addEventListener('click', () => {
+                options.numEffectLast = time.sum; // クリック時にエフェクトをリセット
+                update();
+            });
+        };
+    </script>
+</body>
+</html>
